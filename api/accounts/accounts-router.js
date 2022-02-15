@@ -16,15 +16,15 @@ router.get('/:id', checkAccountId, (req, res, next) => {
 })
 
 router.post('/', checkAccountPayload, checkAccountNameUnique, (req, res, next) => {
-  Accounts.insert(req.account)
+  Accounts.create(req.account)
   .then(account => {
-    res.status(200).json(account);
+    res.status(201).json(account);
   })
   .catch(next);
 })
 
 router.put('/:id', checkAccountId, checkAccountPayload, checkAccountNameUnique, (req, res, next) => {
-  Accounts.update(req.params.id, req.account)
+  Accounts.updateById(req.params.id, req.account)
   .then(account => {
     res.status(200).json(account);
   })
@@ -33,13 +33,8 @@ router.put('/:id', checkAccountId, checkAccountPayload, checkAccountNameUnique, 
 
 router.delete('/:id', checkAccountId, async (req, res, next) => {
   try {
-    const deletedAccount = Accounts.get(req.params.id);
-    if(!deletedAccount) {
-      next();
-    } else {
-      await Accounts.deleteById(req.params.id);
-      res.json(deletedAccount);
-    }
+    await Accounts.deleteById(req.params.id);
+      res.json(req.account);
   } catch (err) {
     next(err);
   }
