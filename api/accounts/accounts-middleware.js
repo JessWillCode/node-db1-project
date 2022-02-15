@@ -1,56 +1,51 @@
 const Accounts = require('./accounts-model');
-const yup = require('yup');
+const db = require('../../data/db-config');
 
-const accountSchema = yup.object({
-  name: yup.string()
-  .trim()
-  .min(3, "name of account must be between 3 and 100")
-  .max(100, "name of account must be between 3 and 100")
-  .required(),
-  budget: yup.number()
-  .required()
-  .positive("budget of account is too large or too small" )
-  .max(1000000, "budget of account is too large or too small" )
-})
+exports.checkAccountPayload = (req, res, next) => {
+ const error = { status: 400 }
+ const { name, budget } = req.body;
+ if(name === undefined || budget === undefined) {
+   error.message = 'name and budget are required';
+ } else if (typeof name !== 'string') {
+   error.message = 'name of account must be a string';
+ } else if (name.trim().length < 3 ||name.trim().length > 100 ) {
+   error.message = 'name of account must be between 3 and 100';
+ } else if (typeof budget !== 'number' || isNaN(budget)) {
+   error.message = 'budget of account must be a number';
+ } else if (budget < 0 || budget > 1000000) {
+   error.message = 'budget of account is too large or too small';
+ }
 
-exports.checkAccountPayload = async (req, res, next) => {
- try {
-  const validated = await accountSchema.validate(req.body);
-  req.account = validated;
-  next();
- } catch (err) {
-   res.status(400).json({
-     message: "name and budget are required"
-   })
+ if (error.message) {
+   next(error);
+ } else {
+   next();
  }
 }
 
-exports.checkAccountNameUnique = (req, res, next) => {
-  Accounts.getById(req.params.id)
-  .then(name => {
-    if(name) {
-      res.status(400).json({
-        message: "that name is taken"
-      })
-    } else {
-      req.account = name;
-      next();
-    }
-  })
-  .catch(next);
+exports.checkAccountNameUnique =  async(req, res, next) => {
+try {
+ const existing = await db('accounts').where('name', req.body.name).trim().first();
+ if(existing) {
+  next({ status: 400, message: 'that name is taken'});
+ } else {
+   next();
+ }
+
+} catch(err) {
+  next(err);
+}
 }
 
-exports.checkAccountId = (req, res, next) => {
-  Accounts.getById(req.params.id)
-  .then(id => {
-    if(id) {
-      req.account = id;
-      next();
-    } else {
-      res.status(404).json({
-        message: "account not found"
-      })
-    }
-  })
-  .catch(next);
+exports.checkAccountId = async (req, res, next) => {
+ try {
+   const account = await Accounts.getById(req.params.id);
+   if(!account) {
+     next({ status: 404, message: 'not found!'})
+   } else {
+     req.account = account;
+   }
+ } catch (err) {
+   next(err)
+ }
 }
